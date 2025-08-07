@@ -56,7 +56,6 @@ class MainActivity : ComponentActivity() {
                         CuentasEnergia (navController = navController)
                     }
                     composable(
-                        route = "resultados_screen/{totalAPagarPorcontador}/{consumoKWPorContador}/{precioTotalPorContadorSinAseo}/{precioKWPesos}/{totalAseoPorCocina}/{totalAPagarPiso1}/{totalAPagarPiso1SinAseo}/{consumoPiso1}",
                         arguments = listOf(
                             navArgument("totalAPagarPorcontador"){ type = NavType.StringType },
                             navArgument("consumoKWPorContador"){ type = NavType.StringType },
@@ -65,7 +64,6 @@ class MainActivity : ComponentActivity() {
                             navArgument("totalAseoPorCocina"){ type = NavType.StringType },
                             navArgument("totalAPagarPiso1"){ type = NavType.StringType },
                             navArgument("totalAPagarPiso1SinAseo"){ type = NavType.StringType },
-                            navArgument("consumoPiso1"){ type = NavType.StringType }
                         )
                     ){bakcStackEntry ->
                         val totalAPagarPorContadorStr = bakcStackEntry.arguments?.getString("totalAPagarPorcontador")?:""
@@ -91,7 +89,6 @@ class MainActivity : ComponentActivity() {
                             totalAseoPorCocina = URLDecoder.decode(aseoPorCocina, charset),
                             pagarPiso1 = URLDecoder.decode(totalAPagarPiso1, charset),
                             pagarPiso1SinAseo = URLDecoder.decode(totalAPagarPiso1SinAseo, charset),
-                            consumoPiso1 = URLDecoder.decode(consumoPiso1, charset)
                         )
                     }
                 }
@@ -261,9 +258,6 @@ fun CuentasEnergia(navController: NavController) {
                             val precioPorContadorConAseo = precioPorContadorSinAseo + aseoPorCocina
                             totalConsumoTodosContadores += consumoIndividual
 
-                            consumoKWPorContador.add("C${index + 1} Consumo: ${"%.2f".format(consumoIndividual)} KW")
-                            precioTotalPorContadorSinAseo.add("C${index + 1} Total sin aseo: $${"%.2f".format(precioPorContadorSinAseo)}")
-                            totalAPagarPorcontador.add("C${index + 1} Total: \$${"%.2f".format(precioPorContadorConAseo)}")
                         } else {
                             consumoKWPorContador.add("C${index + 1} Error: Números inválidos.")
                         }
@@ -272,9 +266,6 @@ fun CuentasEnergia(navController: NavController) {
                             totalAPagarPisoSinAseo1 = pesosKW * kwConsumidosRestantes
                             totalAPagarPiso1= totalAPagarPisoSinAseo1 + aseoPorCocina
 
-                            pagarPiso1= "El total del piso 1 es: $${"%.2f".format(totalAPagarPiso1)}"
-                            pagarPiso1SinAseo= "El total sin aseo del piso 1 es: $${"%.2f".format(totalAPagarPisoSinAseo1)}"
-                            consumoPiso1= "El consumo del piso 1 es: ${"%.2f".format(kwConsumidosRestantes)} KW"
 
                         }
                     }
@@ -290,7 +281,6 @@ fun CuentasEnergia(navController: NavController) {
                     val encodedPrecioKW = URLEncoder.encode(precioKWPesos, charset)
                     val encodedAseoPorCocina = URLEncoder.encode(totalAseoPorCocina, charset)
 
-                    navController.navigate("resultados_screen/$encodedTotalAPagar/$encodedConsumoKW/$encodedTotalSinAseo/$encodedPrecioKW/$encodedAseoPorCocina/$encodedpagarPiso1/$encodedpagarPiso1SinAseo/$encodedconsumoPiso1")
         },
                 modifier = Modifier.weight(1f)
             ) {
@@ -318,7 +308,6 @@ fun ResultadosScreen(
     totalAseoPorCocina: String,
     pagarPiso1: String,
     pagarPiso1SinAseo: String,
-    consumoPiso1: String
 ){
     Scaffold (
         topBar = {

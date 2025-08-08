@@ -114,7 +114,6 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CuentasEnergia(navController: NavController) {
 
@@ -246,9 +245,9 @@ fun CuentasEnergia(navController: NavController) {
             Button(
                 onClick = {
                     var totalConsumoTodosContadores = 0.0
-                    var kwConsumidosRestantes: Double? = null
-                    var totalAPagarPisoSinAseo1: Double? = null
-                    var totalAPagarPiso1: Double? = null
+                    var kwConsumidosRestantes: Double?
+                    var totalAPagarPisoSinAseo1: Double?
+                    var totalAPagarPiso1: Double?
                     var pesosKW: Double? = null
                     var aseoPorCocina: Double? = null
                     val precioEnergia = precioConsumido.toDoubleOrNull()

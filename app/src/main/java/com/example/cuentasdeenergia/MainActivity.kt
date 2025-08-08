@@ -29,6 +29,8 @@ import androidx.navigation.navArgument
 import java.net.URLDecoder
 import java.net.URLEncoder
 import androidx.navigation.NavType
+import java.text.NumberFormat
+import java.util.Locale
 
 data class ContadorLecturas(
     val id: String = java.util.UUID.randomUUID().toString(), // Un ID único para cada contador (útil para gestionar la lista)
@@ -56,6 +58,7 @@ class MainActivity : ComponentActivity() {
                         CuentasEnergia (navController = navController)
                     }
                     composable(
+                        route = "resultados_screen/{totalAPagarPorcontador}/{consumoKWPorContador}/{precioTotalPorContadorSinAseo}/{precioKWPesos}/{totalAseoPorCocina}/{totalAPagarPiso1}/{totalAPagarPiso1SinAseo}/{consumoPiso1}/{totalAPAgarPorContadorRedondeado}/{pagarPiso1Redondeado}",
                         arguments = listOf(
                             navArgument("totalAPagarPorcontador"){ type = NavType.StringType },
                             navArgument("consumoKWPorContador"){ type = NavType.StringType },
@@ -64,6 +67,10 @@ class MainActivity : ComponentActivity() {
                             navArgument("totalAseoPorCocina"){ type = NavType.StringType },
                             navArgument("totalAPagarPiso1"){ type = NavType.StringType },
                             navArgument("totalAPagarPiso1SinAseo"){ type = NavType.StringType },
+                            navArgument("consumoPiso1") { type = NavType.StringType },
+                            navArgument("totalAPAgarPorContadorRedondeado"){ type = NavType.StringType },
+                            navArgument("pagarPiso1Redondeado"){ type = NavType.StringType }
+
                         )
                     ){bakcStackEntry ->
                         val totalAPagarPorContadorStr = bakcStackEntry.arguments?.getString("totalAPagarPorcontador")?:""
@@ -74,11 +81,15 @@ class MainActivity : ComponentActivity() {
                         val totalAPagarPiso1 = bakcStackEntry.arguments?.getString("totalAPagarPiso1") ?: ""
                         val totalAPagarPiso1SinAseo = bakcStackEntry.arguments?.getString("totalAPagarPiso1SinAseo") ?: ""
                         val consumoPiso1 = bakcStackEntry.arguments?.getString("consumoPiso1") ?: ""
+                        val totalAPAgarPorContadorRedondeadoStr = bakcStackEntry.arguments?.getString("totalAPAgarPorContadorRedondeado") ?: ""
+                        val pagarPiso1RedondeadoStr = bakcStackEntry.arguments?.getString("pagarPiso1Redondeado") ?: ""
+
 
                         val charset = Charsets.UTF_8.name()
                         val totalAPagarList = URLDecoder.decode(totalAPagarPorContadorStr, charset).split('|')
                         val consumoKWList = URLDecoder.decode(consumoKWStr, charset).split('|')
                         val totalSinAseoList = URLDecoder.decode(totalSinAseoStr, charset).split('|')
+                        val totalAPAgarPorContadorRedondeadoList = URLDecoder.decode(totalAPAgarPorContadorRedondeadoStr, charset).split('|')
 
                         ResultadosScreen(
                             navController = navController,
@@ -89,6 +100,9 @@ class MainActivity : ComponentActivity() {
                             totalAseoPorCocina = URLDecoder.decode(aseoPorCocina, charset),
                             pagarPiso1 = URLDecoder.decode(totalAPagarPiso1, charset),
                             pagarPiso1SinAseo = URLDecoder.decode(totalAPagarPiso1SinAseo, charset),
+                            consumoPiso1 = URLDecoder.decode(consumoPiso1, charset),
+                            totalAPAgarPorContadorRedondeado = totalAPAgarPorContadorRedondeadoList,
+                            pagarPiso1Redondeado = URLDecoder.decode(pagarPiso1RedondeadoStr, charset)
                         )
                     }
                 }
@@ -118,6 +132,9 @@ fun CuentasEnergia(navController: NavController) {
     var pagarPiso1SinAseo by remember { mutableStateOf("") }
     var pagarPiso1 by remember { mutableStateOf("") }
 
+    //Variables de resultados redondeados
+    val totalAPAgarPorContadorRedondeado = remember { mutableStateListOf<String>() }
+    var pagarPiso1Redondeado by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -229,9 +246,9 @@ fun CuentasEnergia(navController: NavController) {
             Button(
                 onClick = {
                     var totalConsumoTodosContadores = 0.0
-                    var kwConsumidosRestantes = 0.0
-                    var totalAPagarPisoSinAseo1 = 0.0
-                    var totalAPagarPiso1= 0.0
+                    var kwConsumidosRestantes: Double? = null
+                    var totalAPagarPisoSinAseo1: Double? = null
+                    var totalAPagarPiso1: Double? = null
                     var pesosKW: Double? = null
                     var aseoPorCocina: Double? = null
                     val precioEnergia = precioConsumido.toDoubleOrNull()
@@ -244,8 +261,8 @@ fun CuentasEnergia(navController: NavController) {
                         pesosKW= precioEnergia/kwConsumidos
                         aseoPorCocina= costoAseo/numCocinas
 
-                        totalAseoPorCocina= "Por cocina el precio del aseo es: $${"%.2f".format(aseoPorCocina)}"
-                        precioKWPesos= "Precio del KW en pesos: $${"%.2f".format(pesosKW)}"
+                        totalAseoPorCocina= "Por cocina el precio del aseo es: \$${formatearConSeparadorMiles(aseoPorCocina)}"
+                        precioKWPesos= "Precio del KW en pesos: \$${formatearConSeparadorMiles(pesosKW)}"
                     }
 
                     for ((index, contador) in listaContadores.withIndex()) {
@@ -258,15 +275,28 @@ fun CuentasEnergia(navController: NavController) {
                             val precioPorContadorConAseo = precioPorContadorSinAseo + aseoPorCocina
                             totalConsumoTodosContadores += consumoIndividual
 
+                            precioTotalPorContadorSinAseo.add("C${index + 1}: \$${formatearConSeparadorMiles(precioPorContadorSinAseo)}")
+                            totalAPagarPorcontador.add("C${index + 1}: \$${formatearConSeparadorMiles(precioPorContadorConAseo)}")
+                            consumoKWPorContador.add("C${index + 1}: ${"%.0f".format(consumoIndividual)}")
+
+                            //Resultados redondeados
+                            totalAPAgarPorContadorRedondeado.add("C${index + 1}: \$${formatearConSeparadorMiles(redondearResultado(precioPorContadorConAseo))}")
                         } else {
                             consumoKWPorContador.add("C${index + 1} Error: Números inválidos.")
                         }
-                        if(kwConsumidos != null && pesosKW != null && aseoPorCocina != null ){
-                        kwConsumidosRestantes= kwConsumidos - totalConsumoTodosContadores
+                        if(kwConsumidos != null && pesosKW != null && aseoPorCocina != null ) {
+                            kwConsumidosRestantes = kwConsumidos - totalConsumoTodosContadores
                             totalAPagarPisoSinAseo1 = pesosKW * kwConsumidosRestantes
-                            totalAPagarPiso1= totalAPagarPisoSinAseo1 + aseoPorCocina
+                            totalAPagarPiso1 = totalAPagarPisoSinAseo1 + aseoPorCocina
 
+                            pagarPiso1SinAseo = "Total a pagar piso 1 sin aseo: \$${
+                                formatearConSeparadorMiles(totalAPagarPisoSinAseo1)
+                            }"
+                            pagarPiso1 = "Total a pagar piso 1: \$${formatearConSeparadorMiles(totalAPagarPiso1)}"
+                            consumoPiso1 = "Consumo KW piso 1: ${"%.0f".format(kwConsumidosRestantes)}"
 
+                            //Resultados redondeados
+                            pagarPiso1Redondeado= "Total a pagar piso 1: \$${formatearConSeparadorMiles(redondearResultado(totalAPagarPiso1))}"
                         }
                     }
 
@@ -280,6 +310,22 @@ fun CuentasEnergia(navController: NavController) {
                     val encodedconsumoPiso1 = URLEncoder.encode(consumoPiso1, charset)
                     val encodedPrecioKW = URLEncoder.encode(precioKWPesos, charset)
                     val encodedAseoPorCocina = URLEncoder.encode(totalAseoPorCocina, charset)
+
+                    //Encode de resultados redondeados
+                    val encodedTotalAPagarRedondeado = URLEncoder.encode(totalAPAgarPorContadorRedondeado.joinToString("|"), charset)
+                    val encodedPagarPiso1Redondeado = URLEncoder.encode(pagarPiso1Redondeado, charset)
+
+                    navController.navigate("resultados_screen" +
+                            "/$encodedTotalAPagar" +
+                            "/$encodedConsumoKW" +
+                            "/$encodedTotalSinAseo" +
+                            "/$encodedPrecioKW" +
+                            "/$encodedAseoPorCocina" +
+                            "/$encodedpagarPiso1" +
+                            "/$encodedpagarPiso1SinAseo" +
+                            "/$encodedconsumoPiso1"+
+                            "/$encodedTotalAPagarRedondeado" +
+                            "/$encodedPagarPiso1Redondeado")
 
         },
                 modifier = Modifier.weight(1f)
@@ -296,6 +342,21 @@ fun CuentasEnergia(navController: NavController) {
 
 }
 
+fun redondearResultado(valor: Double): Double {
+    val base = (valor / 100).toInt() * 100
+    val resto = valor - base
+
+    return when {
+        resto <= 50 -> (base + 50).toDouble()
+        else -> (base + 100).toDouble()
+    }
+}
+fun formatearConSeparadorMiles(valor: Double): String {
+    val formato = NumberFormat.getNumberInstance(Locale("es", "CO")) // o Locale.US si prefieres con coma
+    formato.maximumFractionDigits = 0
+    return formato.format(valor)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultadosScreen(
@@ -308,6 +369,9 @@ fun ResultadosScreen(
     totalAseoPorCocina: String,
     pagarPiso1: String,
     pagarPiso1SinAseo: String,
+    consumoPiso1: String,
+    totalAPAgarPorContadorRedondeado: List<String>,
+    pagarPiso1Redondeado: String
 ){
     Scaffold (
         topBar = {
@@ -337,6 +401,34 @@ fun ResultadosScreen(
                     Text(
                         text = "Resultado Total a Pagar",
                         style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                item {
+                    Text(
+                        text = "Resultados redondeados",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                items(totalAPAgarPorContadorRedondeado) { resultado ->
+                    Text(
+                        text = resultado,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                item(pagarPiso1Redondeado){
+                    Text(
+                        text = pagarPiso1Redondeado,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                item {
+                    Text(
+                        text = "Resultados exactos",
+                        style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
